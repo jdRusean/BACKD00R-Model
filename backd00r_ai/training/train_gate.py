@@ -1,4 +1,4 @@
-"""Train the calibrated Random Forest MoE_ContextualGate."""
+"""Train the single 3-class Random Forest MoE_ContextualGate."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ if str(MODELS_ROOT) not in sys.path:
     sys.path.insert(0, str(MODELS_ROOT))
 
 from backd00r_ai.configs.feature_schema import FEATURE_NAMES_23
-from backd00r_ai.models.moe_contextual_gate import EXPERT_NAMES, MoE_ContextualGate
-from backd00r_ai.models.smell_experts import SmellExpert
+from backd00r_ai.configs.label_schema import SUPPORTED_LABELS
+from backd00r_ai.models.moe_contextual_gate import MoE_ContextualGate
 
 DEFAULT_ARTIFACTS_DIR = (
     Path("artifacts") if (Path.cwd() / "artifacts").exists() else MODELS_ROOT / "artifacts"
@@ -30,33 +30,17 @@ def _require_pandas_joblib():
     return pd, joblib
 
 
-def _expert_probability_columns(frame, experts: dict[str, SmellExpert], X):
-    mapping = {
-        "GodClassExpert": "GOD_CLASS",
-        "FeatureEnvyExpert": "FEATURE_ENVY",
-        "LongMethodExpert": "LONG_METHOD",
-    }
-    for expert_name, label in mapping.items():
-        frame[f"p_{label.lower()}"] = experts[label].predict_positive_proba(X)
-    return frame
-
-
 def _validate_schema(frame, csv_path: Path) -> None:
     missing = [name for name in FEATURE_NAMES_23 if name not in frame.columns]
     if missing:
         raise ValueError(f"{csv_path} is missing feature columns: {missing}")
-    if "label" not in frame.columns:
-        raise ValueError(f"{csv_path} must contain a 'label' column.")
-    if "binary_target" in frame.columns:
-        frame["binary_target"] = frame["binary_target"].fillna(0).astype(float).astype(int)
+    if "label" not in frame.columns or "binary_target" not in frame.columns:
+        raise ValueError(f"{csv_path} must contain 'label' and 'binary_target' columns.")
+    frame["binary_target"] = frame["binary_target"].fillna(0).astype(float).astype(int)
     frame["label"] = frame["label"].astype(str).str.strip().str.upper()
 
 
-def _print_gate_validation_scores(
-    gate: MoE_ContextualGate,
-    val_csv: Path,
-    experts: dict[str, SmellExpert],
-) -> None:
+def _print_gate_validation_scores(gate: MoE_ContextualGate, val_csv: Path) -> None:
     if not val_csv.exists():
         print(f"Validation fold not found; skipping gate validation: {val_csv}")
         return
@@ -72,19 +56,13 @@ def _print_gate_validation_scores(
         return
     _validate_schema(frame, val_csv)
     X_val = frame.loc[:, FEATURE_NAMES_23].astype(float).values
-    frame = _expert_probability_columns(frame, experts, X_val)
-    probability_cols = ["p_god_class", "p_feature_envy", "p_long_method"]
-    X_gate_val = frame.loc[:, list(FEATURE_NAMES_23) + probability_cols].astype(float).values
-    gate_rows = gate.predict_proba(X_gate_val)
+    gate_rows = gate.predict_proba(X_val)
     y_true = frame["label"].astype(str).values
-    y_pred = [
-        max(row.smell_confidence_probability, key=row.smell_confidence_probability.get)
-        for row in gate_rows
-    ]
+    y_pred = [max(row.as_label_distribution, key=row.as_label_distribution.get) for row in gate_rows]
     precision, recall, f1, _ = precision_recall_fscore_support(
         y_true,
         y_pred,
-        labels=["GOD_CLASS", "FEATURE_ENVY", "LONG_METHOD"],
+        labels=list(SUPPORTED_LABELS),
         average="macro",
         zero_division=0,
     )
@@ -94,21 +72,10 @@ def _print_gate_validation_scores(
     )
 
 
-def train(input_csv: Path, experts_dir: Path, output_path: Path, val_csv: Path | None = None) -> None:
+def train(input_csv: Path, output_path: Path, val_csv: Path | None = None) -> None:
     if not input_csv.exists():
         print(f"Training feature table not found: {input_csv}")
-        print("Run preprocess.py to create train_balanced.csv, then rerun expert and gate training.")
-        return
-    missing_experts = [
-        experts_dir / f"{label.lower()}_expert.joblib"
-        for label in ("GOD_CLASS", "FEATURE_ENVY", "LONG_METHOD")
-        if not (experts_dir / f"{label.lower()}_expert.joblib").exists()
-    ]
-    if missing_experts:
-        print("Missing trained smell expert artifacts:")
-        for path in missing_experts:
-            print(f"- {path}")
-        print("Run train_experts.py before training MoE_ContextualGate.")
+        print("Run preprocess.py to create train_balanced.csv, then rerun gate training.")
         return
     pd, joblib = _require_pandas_joblib()
     frame = pd.read_csv(input_csv)
@@ -118,44 +85,16 @@ def train(input_csv: Path, experts_dir: Path, output_path: Path, val_csv: Path |
         return
     _validate_schema(frame, input_csv)
     X = frame.loc[:, FEATURE_NAMES_23].astype(float).values
-    experts = {
-        label: SmellExpert.load(experts_dir / f"{label.lower()}_expert.joblib")
-        for label in ("GOD_CLASS", "FEATURE_ENVY", "LONG_METHOD")
-    }
-    frame = _expert_probability_columns(frame, experts, X)
-
-    probability_cols = ["p_god_class", "p_feature_envy", "p_long_method"]
-    X_gate = frame.loc[:, list(FEATURE_NAMES_23) + probability_cols].astype(float).values
-    y_smell = frame["label"].astype(str).values
-
-    expert_by_label = {
-        "GOD_CLASS": "GodClassExpert",
-        "FEATURE_ENVY": "FeatureEnvyExpert",
-        "LONG_METHOD": "LongMethodExpert",
-    }
-    y_reliability = frame[probability_cols].idxmax(axis=1).map(
-        {
-            "p_god_class": "GodClassExpert",
-            "p_feature_envy": "FeatureEnvyExpert",
-            "p_long_method": "LongMethodExpert",
-        }
-    )
-    y_context = frame["label"].map(expert_by_label).fillna(EXPERT_NAMES[0])
-
-    gate = MoE_ContextualGate().fit(X_gate, y_smell, y_reliability.values, y_context.values)
-    for row in gate.predict_proba(X_gate[: min(10, len(frame))]):
-        for distribution in (
-            row.smell_confidence_probability,
-            row.expert_reliability_probability,
-            row.contextual_routing_probability,
-        ):
-            if abs(sum(distribution.values()) - 1.0) > 1e-6:
-                raise AssertionError("Gate probability distribution is not normalized.")
+    y = frame["label"].astype(str).values
+    gate = MoE_ContextualGate().fit(X, y)
+    for row in gate.predict_proba(X[: min(10, len(frame))]):
+        if abs(sum(row.weights.values()) - 1.0) > 1e-6:
+            raise AssertionError("Gate routing weights are not normalized.")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(gate, output_path)
     print(f"Wrote MoE_ContextualGate artifact: {output_path}")
     if val_csv is not None:
-        _print_gate_validation_scores(gate, val_csv, experts)
+        _print_gate_validation_scores(gate, val_csv)
 
 
 def main() -> None:
@@ -163,11 +102,6 @@ def main() -> None:
     parser.add_argument(
         "--input",
         default=DEFAULT_ARTIFACTS_DIR / "train_balanced.csv",
-        type=Path,
-    )
-    parser.add_argument(
-        "--experts-dir",
-        default=DEFAULT_ARTIFACTS_DIR / "models",
         type=Path,
     )
     parser.add_argument(
@@ -181,7 +115,7 @@ def main() -> None:
         type=Path,
     )
     args = parser.parse_args()
-    train(args.input, args.experts_dir, args.out, args.val)
+    train(args.input, args.out, args.val)
 
 
 if __name__ == "__main__":

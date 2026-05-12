@@ -1,4 +1,4 @@
-"""Train calibrated smell-specialist experts from a 23-feature CSV."""
+"""Train three multi-class smell-specialist experts."""
 
 from __future__ import annotations
 
@@ -22,6 +22,9 @@ DEFAULT_ARTIFACTS_DIR = (
     Path("artifacts") if (Path.cwd() / "artifacts").exists() else MODELS_ROOT / "artifacts"
 )
 
+TARGET_SMELL_WEIGHT = 1.0
+NON_TARGET_SMELL_WEIGHT = 0.25
+
 
 def _load_training_frame(path: Path):
     try:
@@ -40,19 +43,31 @@ def _load_training_frame(path: Path):
     return frame
 
 
-def binary_target_for_label(frame, target_label: str):
-    """One-vs-rest target for one smell expert.
+def _positive_smell_rows(frame):
+    return frame[frame["binary_target"] == 1].copy()
 
-    This intentionally does not use the raw `binary_target` column alone.
-    A positive training example for one expert must match both:
 
-    - the expert's target smell label
-    - `binary_target == 1`
-    """
+def _positive_multiclass_training_frame(frame):
+    """Use real positive rows from all supported smell classes for every expert."""
 
-    return (
-        (frame["label"] == target_label) & (frame["binary_target"] == 1)
-    ).astype(int)
+    positive = _positive_smell_rows(frame)
+    existing = set(positive["label"].astype(str))
+    missing = [label for label in SUPPORTED_LABELS if label not in existing]
+    if missing:
+        raise ValueError(
+            "Positive training rows must contain every supported smell label; "
+            f"missing: {missing}"
+        )
+    return positive
+
+
+def _specialization_weights(frame, target_label: str) -> list[float]:
+    """Emphasize the target smell while retaining real competing-class examples."""
+
+    return [
+        TARGET_SMELL_WEIGHT if str(label) == target_label else NON_TARGET_SMELL_WEIGHT
+        for label in frame["label"].astype(str)
+    ]
 
 
 def _print_validation_scores(experts: dict[str, SmellExpert], val_csv: Path) -> None:
@@ -69,39 +84,24 @@ def _print_validation_scores(experts: dict[str, SmellExpert], val_csv: Path) -> 
         print(f"Validation fold has no rows; skipping expert validation: {val_csv}")
         return
     X_val = frame.loc[:, FEATURE_NAMES_23].astype(float).values
-    print("Validation scores for smell-specialist experts:")
+    y_true = frame["label"].astype(str).values
+    print("Validation scores for multi-class smell experts on full validation set:")
     for target_label, expert in experts.items():
-        y_true_series = binary_target_for_label(frame, target_label)
-        support = int(y_true_series.sum())
-        y_true = y_true_series.values
-        y_score = expert.predict_positive_proba(X_val)
-        y_pred_threshold = [1 if score >= 0.5 else 0 for score in y_score]
-        threshold_precision, threshold_recall, threshold_f1, _ = precision_recall_fscore_support(
+        distributions = expert.predict_distribution(X_val)
+        y_pred = [max(row, key=row.get) for row in distributions]
+        precision, recall, f1, _ = precision_recall_fscore_support(
             y_true,
-            y_pred_threshold,
-            average="binary",
+            y_pred,
+            labels=list(SUPPORTED_LABELS),
+            average="macro",
             zero_division=0,
         )
-        positive_count = int(y_true.sum())
-        y_pred_ranked = [0] * len(y_score)
-        if positive_count > 0:
-            top_indices = sorted(range(len(y_score)), key=lambda idx: y_score[idx], reverse=True)[
-                :positive_count
-            ]
-            for idx in top_indices:
-                y_pred_ranked[idx] = 1
-        ranked_precision, ranked_recall, ranked_f1, _ = precision_recall_fscore_support(
-            y_true,
-            y_pred_ranked,
-            average="binary",
-            zero_division=0,
-        )
+        support = len(y_true)
+        specialty_support = int((frame["label"] == target_label).sum())
         print(
-            f"- {target_label}: support={support}, "
-            f"threshold@0.50 precision={threshold_precision:.4f}, "
-            f"recall={threshold_recall:.4f}, f1={threshold_f1:.4f}; "
-            f"ranked@positives precision={ranked_precision:.4f}, "
-            f"recall={ranked_recall:.4f}, f1={ranked_f1:.4f}"
+            f"- {target_label}: validation_support={support}, "
+            f"specialty_support={specialty_support}, "
+            f"macro_precision={precision:.4f}, macro_recall={recall:.4f}, macro_f1={f1:.4f}"
         )
 
 
@@ -117,29 +117,31 @@ def train(input_csv: Path, output_dir: Path, val_csv: Path | None = None) -> Non
         print(f"Training feature table has no rows yet: {input_csv}")
         print("Run preprocess.py to create train_balanced.csv, then run this script again.")
         return
-    X = frame.loc[:, FEATURE_NAMES_23].astype(float).values
+
     manifest: dict[str, str] = {}
     experts: dict[str, SmellExpert] = {}
-    print("Training one-vs-rest smell experts with explicit targets:")
+    train_subset = _positive_multiclass_training_frame(frame)
+    dropped_negative_rows = int((frame["binary_target"] != 1).sum())
+    print("Training full 3-class smell experts with specialization weights:")
     for target_label in SUPPORTED_LABELS:
-        y_series = binary_target_for_label(frame, target_label)
-        support = int(y_series.sum())
-        negatives = int(len(y_series) - support)
-        if support == 0 or negatives == 0:
-            raise ValueError(
-                f"{target_label} expert requires both positive and negative rows. "
-                f"Found support={support}, negatives={negatives} in {input_csv}."
-            )
+        sample_weight = _specialization_weights(train_subset, target_label)
+        X = train_subset.loc[:, FEATURE_NAMES_23].astype(float).values
+        y = train_subset["label"].astype(str).values
+        target_rows = int((train_subset["label"] == target_label).sum())
+        non_target_rows = len(train_subset) - target_rows
         print(
-            f"- {target_label}: positive support={support}, negatives={negatives}, "
-            "target=((label == target_label) & (binary_target == 1))"
+            f"- {target_label}: positive_rows={len(train_subset)}, "
+            f"target_weight_rows={target_rows} at {TARGET_SMELL_WEIGHT}, "
+            f"non_target_weight_rows={non_target_rows} at {NON_TARGET_SMELL_WEIGHT}, "
+            f"dropped_negative_rows={dropped_negative_rows}, "
+            "output=[P(GOD_CLASS), P(FEATURE_ENVY), P(LONG_METHOD)]"
         )
-        y = y_series.values
-        expert = expert_for_label(target_label).fit(X, y)
+        expert = expert_for_label(target_label).fit(X, y, sample_weight=sample_weight)
         path = output_dir / f"{target_label.lower()}_expert.joblib"
         expert.save(path)
         manifest[target_label] = str(path)
         experts[target_label] = expert
+
     (output_dir / "experts_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"Wrote trained smell experts to: {output_dir}")
     if val_csv is not None:

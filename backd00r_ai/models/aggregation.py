@@ -1,4 +1,4 @@
-"""Probability-aware MoE aggregation for BACKD00R."""
+"""Weighted-sum MoE aggregation for BACKD00R."""
 
 from __future__ import annotations
 
@@ -8,46 +8,37 @@ from backd00r_ai.configs.label_schema import SUPPORTED_LABELS
 from backd00r_ai.models.calibration import normalize_distribution
 from backd00r_ai.models.moe_contextual_gate import EXPERT_NAMES, GateProbabilities
 
-EXPERT_TO_LABEL: dict[str, str] = {
-    "GodClassExpert": "GOD_CLASS",
-    "FeatureEnvyExpert": "FEATURE_ENVY",
-    "LongMethodExpert": "LONG_METHOD",
-}
-
 
 @dataclass(frozen=True)
 class AggregatedPrediction:
     final_probability: dict[str, float]
     final_smell: str
     final_confidence: float
+    confidence_margin: float
 
 
 class ProbabilityAwareAggregator:
+    """Apply P_final = normalize(sum_i w_i * expert_i(x))."""
+
     def aggregate(
         self,
         gate: GateProbabilities,
         expert_probabilities: dict[str, dict[str, float]],
     ) -> AggregatedPrediction:
-        scores: dict[str, float] = {}
-        for label in SUPPORTED_LABELS:
-            weighted_expert_sum = 0.0
-            for expert_name in EXPERT_NAMES:
-                expert_label = EXPERT_TO_LABEL[expert_name]
-                expert_distribution = expert_probabilities.get(expert_name, {})
-                expert_label_probability = expert_distribution.get(label)
-                if expert_label_probability is None and label == expert_label:
-                    expert_label_probability = expert_distribution.get(expert_label, 0.0)
-                weighted_expert_sum += (
-                    gate.expert_reliability_probability.get(expert_name, 0.0)
-                    * gate.contextual_routing_probability.get(expert_name, 0.0)
-                    * float(expert_label_probability or 0.0)
-                )
-            scores[label] = gate.smell_confidence_probability.get(label, 0.0) * weighted_expert_sum
+        scores = {label: 0.0 for label in SUPPORTED_LABELS}
+        for expert_name in EXPERT_NAMES:
+            weight = gate.weights.get(expert_name, 0.0)
+            distribution = expert_probabilities.get(expert_name, {})
+            for label in SUPPORTED_LABELS:
+                scores[label] += weight * float(distribution.get(label, 0.0))
 
         normalized = normalize_distribution(scores)
-        final_smell = max(normalized, key=normalized.get)
+        ranked = sorted(normalized.items(), key=lambda item: item[1], reverse=True)
+        final_smell, final_confidence = ranked[0]
+        second = ranked[1][1] if len(ranked) > 1 else 0.0
         return AggregatedPrediction(
             final_probability=normalized,
             final_smell=final_smell,
-            final_confidence=normalized[final_smell],
+            final_confidence=final_confidence,
+            confidence_margin=final_confidence - second,
         )

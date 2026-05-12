@@ -1,4 +1,4 @@
-"""Smell-specialist calibrated classifiers."""
+"""Three-class smell-specialist probabilistic classifiers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from backd00r_ai.configs.label_schema import SUPPORTED_LABELS
-from backd00r_ai.models.calibration import binary_positive_probability
+from backd00r_ai.models.calibration import normalize_distribution
 
 
 def _require_sklearn() -> None:
@@ -22,15 +22,23 @@ def _require_sklearn() -> None:
 
 @dataclass
 class SmellExpert:
+    """Specialist expert with a fixed 3-class probability output.
+
+    Each expert is trained on all positive smell rows with target-specific
+    sample weights, and its inference contract is always:
+
+    [P(GOD_CLASS), P(FEATURE_ENVY), P(LONG_METHOD)]
+    """
+
     label: str
     estimator: Any | None = None
+    class_labels: tuple[str, ...] = SUPPORTED_LABELS
 
-    def fit(self, X: Any, y: Any) -> "SmellExpert":
+    def fit(self, X: Any, y: Any, sample_weight: Any | None = None) -> "SmellExpert":
         _require_sklearn()
-        from sklearn.calibration import CalibratedClassifierCV
         from sklearn.ensemble import RandomForestClassifier
 
-        base = RandomForestClassifier(
+        self.estimator = RandomForestClassifier(
             n_estimators=200,
             max_depth=12,
             min_samples_leaf=2,
@@ -38,14 +46,29 @@ class SmellExpert:
             random_state=42,
             n_jobs=-1,
         )
-        self.estimator = CalibratedClassifierCV(base, method="isotonic", cv=3)
-        self.estimator.fit(X, y)
+        self.estimator.fit(X, y, sample_weight=sample_weight)
         return self
 
-    def predict_positive_proba(self, X: Any) -> list[float]:
+    def predict_distribution(self, X: Any) -> list[dict[str, float]]:
         if self.estimator is None:
             raise RuntimeError(f"{self.label} expert has not been fitted.")
-        return binary_positive_probability(self.estimator.predict_proba(X))
+        probabilities = self.estimator.predict_proba(X)
+        rows = probabilities.tolist() if hasattr(probabilities, "tolist") else probabilities
+        estimator_classes = [str(value) for value in self.estimator.classes_]
+        output: list[dict[str, float]] = []
+        for row in rows:
+            raw = {label: 0.0 for label in self.class_labels}
+            for label, value in zip(estimator_classes, row):
+                if label in raw:
+                    raw[label] = float(value)
+            output.append(normalize_distribution(raw))
+        return output
+
+    def predict_distribution_array(self, X: Any) -> list[list[float]]:
+        return [
+            [distribution[label] for label in self.class_labels]
+            for distribution in self.predict_distribution(X)
+        ]
 
     def save(self, path: str | Path) -> None:
         _require_sklearn()

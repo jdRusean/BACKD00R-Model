@@ -1,4 +1,4 @@
-"""Random Forest probability gate for MoE-inspired expert aggregation."""
+"""Single 3-class Random Forest gate for MoE routing weights."""
 
 from __future__ import annotations
 
@@ -9,6 +9,11 @@ from backd00r_ai.configs.label_schema import SUPPORTED_LABELS
 from backd00r_ai.models.calibration import normalize_distribution
 
 EXPERT_NAMES: tuple[str, ...] = ("GodClassExpert", "FeatureEnvyExpert", "LongMethodExpert")
+EXPERT_LABELS: dict[str, str] = {
+    "GodClassExpert": "GOD_CLASS",
+    "FeatureEnvyExpert": "FEATURE_ENVY",
+    "LongMethodExpert": "LONG_METHOD",
+}
 
 
 def _require_sklearn() -> None:
@@ -23,47 +28,31 @@ def _require_sklearn() -> None:
 
 @dataclass
 class GateProbabilities:
-    smell_confidence_probability: dict[str, float]
-    expert_reliability_probability: dict[str, float]
-    contextual_routing_probability: dict[str, float]
+    """Routing weights over the three experts."""
+
+    weights: dict[str, float]
+
+    @property
+    def as_label_distribution(self) -> dict[str, float]:
+        return {
+            EXPERT_LABELS[expert_name]: weight
+            for expert_name, weight in self.weights.items()
+        }
 
 
 class MoE_ContextualGate:
-    """Calibrated Random Forest gate with three interpretable probability heads."""
+    """Single 3-class classifier that outputs expert routing weights."""
 
     def __init__(self, random_state: int = 42) -> None:
         self.random_state = random_state
-        self.smell_head: Any | None = None
-        self.reliability_head: Any | None = None
-        self.routing_head: Any | None = None
+        self.estimator: Any | None = None
+        self.class_labels: tuple[str, ...] = SUPPORTED_LABELS
 
-    def fit(self, X_gate: Any, y_smell: Any, y_reliability: Any, y_context: Any) -> "MoE_ContextualGate":
+    def fit(self, X_gate: Any, y: Any) -> "MoE_ContextualGate":
         _require_sklearn()
-        self.smell_head = self._fit_head(X_gate, y_smell)
-        self.reliability_head = self._fit_head(X_gate, y_reliability)
-        self.routing_head = self._fit_head(X_gate, y_context)
-        return self
-
-    def predict_proba(self, X_gate: Any) -> list[GateProbabilities]:
-        if not all([self.smell_head, self.reliability_head, self.routing_head]):
-            raise RuntimeError("MoE_ContextualGate has not been fitted.")
-        smell_rows = self._rows_for_head(self.smell_head, X_gate, SUPPORTED_LABELS)
-        reliability_rows = self._rows_for_head(self.reliability_head, X_gate, EXPERT_NAMES)
-        routing_rows = self._rows_for_head(self.routing_head, X_gate, EXPERT_NAMES)
-        return [
-            GateProbabilities(
-                smell_confidence_probability=normalize_distribution(smell),
-                expert_reliability_probability=normalize_distribution(reliability),
-                contextual_routing_probability=normalize_distribution(routing),
-            )
-            for smell, reliability, routing in zip(smell_rows, reliability_rows, routing_rows)
-        ]
-
-    def _fit_head(self, X: Any, y: Any) -> Any:
-        from sklearn.calibration import CalibratedClassifierCV
         from sklearn.ensemble import RandomForestClassifier
 
-        base = RandomForestClassifier(
+        self.estimator = RandomForestClassifier(
             n_estimators=200,
             max_depth=10,
             min_samples_leaf=2,
@@ -71,20 +60,39 @@ class MoE_ContextualGate:
             random_state=self.random_state,
             n_jobs=-1,
         )
-        head = CalibratedClassifierCV(base, method="isotonic", cv=3)
-        head.fit(X, y)
-        return head
+        self.estimator.fit(X_gate, y)
+        return self
 
-    @staticmethod
-    def _rows_for_head(head: Any, X: Any, expected_classes: tuple[str, ...]) -> list[dict[str, float]]:
-        probabilities = head.predict_proba(X)
+    def predict_proba(self, X_gate: Any) -> list[GateProbabilities]:
+        if self.estimator is None:
+            raise RuntimeError("MoE_ContextualGate has not been fitted.")
+        probabilities = self.estimator.predict_proba(X_gate)
         rows = probabilities.tolist() if hasattr(probabilities, "tolist") else probabilities
-        classes = [str(cls) for cls in head.classes_]
-        output: list[dict[str, float]] = []
+        estimator_classes = [str(value) for value in self.estimator.classes_]
+        output: list[GateProbabilities] = []
         for row in rows:
-            raw = {label: 0.0 for label in expected_classes}
-            for label, value in zip(classes, row):
-                if label in raw:
-                    raw[label] = float(value)
-            output.append(normalize_distribution(raw))
+            label_distribution = {label: 0.0 for label in self.class_labels}
+            for label, value in zip(estimator_classes, row):
+                if label in label_distribution:
+                    label_distribution[label] = float(value)
+            normalized = normalize_distribution(label_distribution)
+            output.append(
+                GateProbabilities(
+                    weights={
+                        "GodClassExpert": normalized["GOD_CLASS"],
+                        "FeatureEnvyExpert": normalized["FEATURE_ENVY"],
+                        "LongMethodExpert": normalized["LONG_METHOD"],
+                    }
+                )
+            )
         return output
+
+    def predict_weight_array(self, X_gate: Any) -> list[list[float]]:
+        return [
+            [
+                row.weights["GodClassExpert"],
+                row.weights["FeatureEnvyExpert"],
+                row.weights["LongMethodExpert"],
+            ]
+            for row in self.predict_proba(X_gate)
+        ]

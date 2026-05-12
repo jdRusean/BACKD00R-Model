@@ -3,5 +3,14 @@
     "GOD_CLASS",
     "FEATURE_ENVY",
     "LONG_METHOD"
+  ],
+  "output_shape": [
+    1,
+    3
+  ],
+  "output_order": [
+    "GOD_CLASS",
+    "FEATURE_ENVY",
+    "LONG_METHOD"
   ]
 }

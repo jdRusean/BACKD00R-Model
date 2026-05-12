@@ -1,27 +1,33 @@
 [
   {
     "predictions": {
-      "GOD_CLASS": 0.0,
-      "FEATURE_ENVY": 0.003726367972791698,
-      "LONG_METHOD": 0.9962736320272082
+      "GOD_CLASS": 0.3158516977288516,
+      "FEATURE_ENVY": 0.1511176156944909,
+      "LONG_METHOD": 0.5330306865766576
     },
-    "confidence_score": 0.9962736320272082,
+    "confidence_score": 0.5330306865766576,
+    "confidence_margin": 0.21717898884780606,
     "dominant_smell": "LONG_METHOD",
-    "gate": {
-      "smell_confidence_probability": {
-        "GOD_CLASS": 0.02186301455476176,
-        "FEATURE_ENVY": 0.4881498559437433,
-        "LONG_METHOD": 0.489987129501495
+    "gate_weights": {
+      "GodClassExpert": 0.2001655543742144,
+      "FeatureEnvyExpert": 0.25779337277517944,
+      "LongMethodExpert": 0.5420410728506062
+    },
+    "expert_distributions": {
+      "GodClassExpert": {
+        "GOD_CLASS": 0.3291231742368174,
+        "FEATURE_ENVY": 0.17619947023104277,
+        "LONG_METHOD": 0.49467735553213976
       },
-      "expert_reliability_probability": {
-        "GodClassExpert": 0.0,
-        "FeatureEnvyExpert": 0.0590327099683469,
-        "LongMethodExpert": 0.9409672900316531
+      "FeatureEnvyExpert": {
+        "GOD_CLASS": 0.27802956802615897,
+        "FEATURE_ENVY": 0.1309892001813928,
+        "LONG_METHOD": 0.5909812317924483
       },
-      "contextual_routing_probability": {
-        "GodClassExpert": 0.02186301455476176,
-        "FeatureEnvyExpert": 0.4881498559437433,
-        "LongMethodExpert": 0.489987129501495
+      "LongMethodExpert": {
+        "GOD_CLASS": 0.32893890141935717,
+        "FEATURE_ENVY": 0.151428383298897,
+        "LONG_METHOD": 0.5196327152817458
       }
     }
   }

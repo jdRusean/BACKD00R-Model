@@ -1,5 +1,10 @@
 {
   "version": "backd00r-23-v1",
+  "input_name": "float_input",
+  "input_shape": [
+    1,
+    23
+  ],
   "features": [
     "wmc",
     "cbo",

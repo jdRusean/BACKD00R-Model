@@ -1,5 +1,11 @@
 {
-  "name": "BACKD00R Python Backend AI Pipeline",
-  "scope": "Recommendation/prioritization-oriented Java code smell model",
-  "gate": "MoE_ContextualGate Random Forest calibrated probability heads"
+  "name": "BACKD00R MoE Expert Layer",
+  "scope": "Three multi-class experts plus one 3-class routing gate",
+  "aggregation": "P_final = normalize(w_god*expert_god + w_envy*expert_envy + w_long*expert_long)",
+  "onnx_models": [
+    "god_class_expert.onnx",
+    "feature_envy_expert.onnx",
+    "long_method_expert.onnx",
+    "moe_contextual_gate.onnx"
+  ]
 }

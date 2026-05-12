@@ -8,8 +8,8 @@ BACKD00R:
 - CIDA and COA reconstruction from source access patterns.
 - Git-history feature mining up to the target commit.
 - Detector-philosophy signals inspired by JDeodorant, JSpIRIT, iPlasma, and DesigniteJava.
-- Smell-specialist calibrated classifiers.
-- `MoE_ContextualGate`, a calibrated Random Forest probability gate.
+- Smell-specialist multi-class probabilistic classifiers.
+- `MoE_ContextualGate`, a single 3-class Random Forest routing gate.
 - Probability-aware final smell aggregation.
 - ONNX export metadata and optional sklearn-to-ONNX model export.
 
@@ -227,39 +227,38 @@ Expected output/artifacts:
 - `Models\artifacts\models\long_method_expert.joblib`
 - `Models\artifacts\models\experts_manifest.json`
 - Console validation summary:
-  - training positive/negative support for each one-vs-rest expert
-  - validation positive support for each smell label
-  - per-label threshold@0.50 Precision/Recall/F1 for `GOD_CLASS`, `FEATURE_ENVY`, and `LONG_METHOD`
-  - per-label ranked@positives Precision/Recall/F1 for the same labels, useful when calibrated probabilities are below `0.50`
+  - each expert's positive-row count and specialization weight breakdown
+  - each expert's macro Precision/Recall/F1 on the full validation set
+  - every expert outputs `[P(GOD_CLASS), P(FEATURE_ENVY), P(LONG_METHOD)]`
 
-These are calibrated binary smell-specialist models.
+These are full 3-class smell-specialist models trained on all positive smell
+rows with target-specific sample weights.
 
 ### Step 7. Train the `MoE_ContextualGate`
 
 Method A: VS Code Quick Run
 
 - Open `Models\backd00r_ai\training\train_gate.py`.
-- Confirm Step 6 produced the three expert `.joblib` files.
+- Confirm Step 5 produced `train_balanced.csv` and `val_normalized.csv`.
 - Click **Run Python File**.
 - The script uses these default paths automatically:
   - input: `artifacts\train_balanced.csv` when a workspace-level `artifacts` folder exists; otherwise `Models\artifacts\train_balanced.csv`
   - validation fold: `artifacts\val_normalized.csv` when a workspace-level `artifacts` folder exists; otherwise `Models\artifacts\val_normalized.csv`
-  - experts directory: `artifacts\models` when a workspace-level `artifacts` folder exists; otherwise `Models\artifacts\models`
   - output: `artifacts\models\moe_contextual_gate.joblib` when a workspace-level `artifacts` folder exists; otherwise `Models\artifacts\models\moe_contextual_gate.joblib`
 
 Method B: Terminal (Hybrid fallback)
 
 ```powershell
-python -m backd00r_ai.training.train_gate --input Models/artifacts/train_balanced.csv --val Models/artifacts/val_normalized.csv --experts-dir Models/artifacts/models --out Models/artifacts/models/moe_contextual_gate.joblib
+python -m backd00r_ai.training.train_gate --input Models/artifacts/train_balanced.csv --val Models/artifacts/val_normalized.csv --out Models/artifacts/models/moe_contextual_gate.joblib
 ```
 
 Expected output/artifacts:
 
 - `Models\artifacts\models\moe_contextual_gate.joblib`
-- The script internally verifies that these gate probability distributions normalize to `1.0`:
-  - `smell_confidence_probability`
-  - `expert_reliability_probability`
-  - `contextual_routing_probability`
+- The script internally verifies that the gate routing weights normalize to `1.0`:
+  - `w_god`
+  - `w_envy`
+  - `w_long`
 - Console validation summary:
   - macro Precision/Recall/F1 for `MoE_ContextualGate` on `val_normalized.csv`
 
@@ -311,8 +310,10 @@ Expected output/artifacts:
 - Each prediction contains:
   - `predictions`: normalized final smell probability distribution.
   - `confidence_score`: highest final smell probability.
+  - `confidence_margin`: top probability minus second probability.
   - `dominant_smell`: predicted smell label.
-  - `gate`: the three interpretable gate probability distributions.
+  - `gate_weights`: `[w_god, w_envy, w_long]` keyed by expert name.
+  - `expert_distributions`: each expert's 3-class probability distribution.
 
 ### Step 9. Evaluate Predictions
 
@@ -383,11 +384,9 @@ Expected output/artifacts:
 - `Models\artifacts\onnx\god_class_expert.onnx`
 - `Models\artifacts\onnx\feature_envy_expert.onnx`
 - `Models\artifacts\onnx\long_method_expert.onnx`
-- `Models\artifacts\onnx\moe_contextual_gate_smell_confidence.onnx`
-- `Models\artifacts\onnx\moe_contextual_gate_expert_reliability.onnx`
-- `Models\artifacts\onnx\moe_contextual_gate_contextual_routing.onnx`
+- `Models\artifacts\onnx\moe_contextual_gate.onnx`
 
-The gate is exported as three ONNX heads because `MoE_ContextualGate` is a custom Python wrapper around three calibrated Random Forest probability heads.
+Each ONNX model uses input node `float_input` with shape `[1, 23]` and emits a 3-class probability output in label order `[GOD_CLASS, FEATURE_ENVY, LONG_METHOD]`.
 
 ## Strict Execution Order
 

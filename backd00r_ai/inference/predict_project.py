@@ -1,4 +1,4 @@
-"""Load trained Python artifacts and produce BACKD00R smell predictions."""
+"""Load trained MoE artifacts and produce BACKD00R smell predictions."""
 
 from __future__ import annotations
 
@@ -13,10 +13,14 @@ MODELS_ROOT = next(
 if str(MODELS_ROOT) not in sys.path:
     sys.path.insert(0, str(MODELS_ROOT))
 
+from backd00r_ai.configs.feature_schema import FEATURE_NAMES_23, FeatureSchema
 from backd00r_ai.models.aggregation import ProbabilityAwareAggregator
 from backd00r_ai.models.moe_contextual_gate import EXPERT_NAMES, MoE_ContextualGate
 from backd00r_ai.models.smell_experts import SmellExpert
 
+DEFAULT_ARTIFACTS_DIR = (
+    Path("artifacts") if (Path.cwd() / "artifacts").exists() else MODELS_ROOT / "artifacts"
+)
 
 LABEL_TO_EXPERT_NAME = {
     "GOD_CLASS": "GodClassExpert",
@@ -28,6 +32,9 @@ LABEL_TO_EXPERT_NAME = {
 class PredictionPipeline:
     def __init__(self, artifacts_dir: str | Path) -> None:
         self.artifacts_dir = Path(artifacts_dir)
+        self.feature_bounds = self._load_feature_bounds(
+            self.artifacts_dir / "feature_bounds.json"
+        )
         self.experts = {
             label: SmellExpert.load(self.artifacts_dir / f"{label.lower()}_expert.joblib")
             for label in LABEL_TO_EXPERT_NAME
@@ -36,39 +43,27 @@ class PredictionPipeline:
         self.aggregator = ProbabilityAwareAggregator()
 
     def predict_vectors(self, vectors: list[list[float]]) -> list[dict[str, object]]:
-        X = vectors
-        expert_positive = {
-            label: self.experts[label].predict_positive_proba(X)
+        X = [self._normalize_vector(vector) for vector in vectors]
+        expert_rows = {
+            LABEL_TO_EXPERT_NAME[label]: self.experts[label].predict_distribution(X)
             for label in LABEL_TO_EXPERT_NAME
         }
-        gate_input = [
-            vector
-            + [
-                expert_positive["GOD_CLASS"][idx],
-                expert_positive["FEATURE_ENVY"][idx],
-                expert_positive["LONG_METHOD"][idx],
-            ]
-            for idx, vector in enumerate(vectors)
-        ]
-        gate_rows = self.gate.predict_proba(gate_input)
+        gate_rows = self.gate.predict_proba(X)
         outputs: list[dict[str, object]] = []
         for idx, gate_row in enumerate(gate_rows):
-            expert_distributions = {}
-            for label, expert_name in LABEL_TO_EXPERT_NAME.items():
-                expert_distributions[expert_name] = {label: expert_positive[label][idx]}
-            for expert_name in EXPERT_NAMES:
-                expert_distributions.setdefault(expert_name, {})
+            expert_distributions = {
+                expert_name: expert_rows[expert_name][idx]
+                for expert_name in EXPERT_NAMES
+            }
             aggregated = self.aggregator.aggregate(gate_row, expert_distributions)
             outputs.append(
                 {
                     "predictions": aggregated.final_probability,
                     "confidence_score": aggregated.final_confidence,
+                    "confidence_margin": aggregated.confidence_margin,
                     "dominant_smell": aggregated.final_smell,
-                    "gate": {
-                        "smell_confidence_probability": gate_row.smell_confidence_probability,
-                        "expert_reliability_probability": gate_row.expert_reliability_probability,
-                        "contextual_routing_probability": gate_row.contextual_routing_probability,
-                    },
+                    "gate_weights": gate_row.weights,
+                    "expert_distributions": expert_distributions,
                 }
             )
         return outputs
@@ -81,22 +76,57 @@ class PredictionPipeline:
             raise RuntimeError("Prediction requires joblib.") from exc
         return joblib.load(path)
 
+    @staticmethod
+    def _load_feature_bounds(path: Path) -> dict[str, dict[str, float]]:
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Missing inference normalization bounds: {path}. "
+                "Run preprocess.py before inference."
+            )
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        features = payload.get("features", {})
+        missing = [name for name in FEATURE_NAMES_23 if name not in features]
+        if missing:
+            raise ValueError(f"feature_bounds.json is missing feature bounds: {missing}")
+        return {
+            name: {
+                "min": float(features[name]["min"]),
+                "max": float(features[name]["max"]),
+            }
+            for name in FEATURE_NAMES_23
+        }
+
+    def _normalize_vector(self, vector: list[float]) -> list[float]:
+        FeatureSchema().validate_vector(vector)
+        normalized: list[float] = []
+        for feature, raw_value in zip(FEATURE_NAMES_23, vector):
+            bounds = self.feature_bounds[feature]
+            minimum = bounds["min"]
+            maximum = bounds["max"]
+            denominator = maximum - minimum
+            if denominator == 0.0:
+                normalized.append(0.0)
+                continue
+            scaled = (float(raw_value) - minimum) / denominator
+            normalized.append(max(0.0, min(1.0, scaled)))
+        return normalized
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--artifacts-dir",
-        default=MODELS_ROOT / "artifacts" / "models",
+        default=DEFAULT_ARTIFACTS_DIR / "models",
         type=Path,
     )
     parser.add_argument(
         "--vectors-json",
-        default=MODELS_ROOT / "artifacts" / "vectors.json",
+        default=DEFAULT_ARTIFACTS_DIR / "vectors.json",
         type=Path,
     )
     parser.add_argument(
         "--out",
-        default=MODELS_ROOT / "artifacts" / "predictions.json",
+        default=DEFAULT_ARTIFACTS_DIR / "predictions.json",
         type=Path,
     )
     args = parser.parse_args()

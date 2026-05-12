@@ -1,0 +1,28 @@
+[
+  {
+    "predictions": {
+      "GOD_CLASS": 0.0,
+      "FEATURE_ENVY": 0.003726367972791698,
+      "LONG_METHOD": 0.9962736320272082
+    },
+    "confidence_score": 0.9962736320272082,
+    "dominant_smell": "LONG_METHOD",
+    "gate": {
+      "smell_confidence_probability": {
+        "GOD_CLASS": 0.02186301455476176,
+        "FEATURE_ENVY": 0.4881498559437433,
+        "LONG_METHOD": 0.489987129501495
+      },
+      "expert_reliability_probability": {
+        "GodClassExpert": 0.0,
+        "FeatureEnvyExpert": 0.0590327099683469,
+        "LongMethodExpert": 0.9409672900316531
+      },
+      "contextual_routing_probability": {
+        "GodClassExpert": 0.02186301455476176,
+        "FeatureEnvyExpert": 0.4881498559437433,
+        "LongMethodExpert": 0.489987129501495
+      }
+    }
+  }
+]

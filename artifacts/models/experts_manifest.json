@@ -1,0 +1,5 @@
+{
+  "GOD_CLASS": "artifacts\\models\\god_class_expert.joblib",
+  "FEATURE_ENVY": "artifacts\\models\\feature_envy_expert.joblib",
+  "LONG_METHOD": "artifacts\\models\\long_method_expert.joblib"
+}

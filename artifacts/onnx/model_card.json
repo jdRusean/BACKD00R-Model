@@ -1,0 +1,5 @@
+{
+  "name": "BACKD00R Python Backend AI Pipeline",
+  "scope": "Recommendation/prioritization-oriented Java code smell model",
+  "gate": "MoE_ContextualGate Random Forest calibrated probability heads"
+}

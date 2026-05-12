@@ -1,0 +1,99 @@
+{
+  "schema_version": "backd00r-23-v1",
+  "scaler": "min_max",
+  "fit_scope": "training_fold_only",
+  "features": {
+    "wmc": {
+      "min": 0.0,
+      "max": 18990.0
+    },
+    "cbo": {
+      "min": 0.0,
+      "max": 926.0
+    },
+    "lcom": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "rfc": {
+      "min": 0.0,
+      "max": 9331.0
+    },
+    "dit": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "loc": {
+      "min": 0.0,
+      "max": 111568.0
+    },
+    "cc_max": {
+      "min": 0.0,
+      "max": 180.0
+    },
+    "nom": {
+      "min": 0.0,
+      "max": 7735.0
+    },
+    "nof": {
+      "min": 0.0,
+      "max": 3397.0
+    },
+    "cida": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "coa": {
+      "min": 0.0,
+      "max": 836.0
+    },
+    "jdeodorant_top": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "iplasma_top": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "designite_top": {
+      "min": 0.0,
+      "max": 0.8767410714285714
+    },
+    "jspirit_top": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "code_churn": {
+      "min": 0.0,
+      "max": 373669.0
+    },
+    "volatility": {
+      "min": 0.0,
+      "max": 7.168306572613257
+    },
+    "bug_fix_ratio": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "author_count": {
+      "min": 0.0,
+      "max": 89.0
+    },
+    "expert_score": {
+      "min": 0.0,
+      "max": 0.9461285936285936
+    },
+    "hotspot_score": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "cm_score": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "complexity_level": {
+      "min": 0.0,
+      "max": 1.0
+    }
+  }
+}

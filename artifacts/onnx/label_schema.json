@@ -1,0 +1,7 @@
+{
+  "supported_labels": [
+    "GOD_CLASS",
+    "FEATURE_ENVY",
+    "LONG_METHOD"
+  ]
+}

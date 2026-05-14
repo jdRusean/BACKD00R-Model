@@ -9,3 +9,5 @@ Models/.pytest_tmp/
 **/__pycache__/
 *.pyc
 Models/artifacts/repo_cache/
+artifacts/repo_cache/
+Models/artifacts/repo_cache/

@@ -1,0 +1,124 @@
+{
+  "schema_version": "backd00r-29-v2",
+  "scaler": "min_max",
+  "fit_scope": "training_fold_only",
+  "normalization_order": "split_by_project_then_fit_training_bounds_then_compute_detector_signals_then_smote_training_only",
+  "features": {
+    "wmc": {
+      "min": 0.0,
+      "max": 18990.0
+    },
+    "cbo": {
+      "min": 0.0,
+      "max": 926.0
+    },
+    "lcom": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "rfc": {
+      "min": 0.0,
+      "max": 9331.0
+    },
+    "dit": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "loc": {
+      "min": 0.0,
+      "max": 111568.0
+    },
+    "cc_max": {
+      "min": 0.0,
+      "max": 180.0
+    },
+    "nom": {
+      "min": 0.0,
+      "max": 7735.0
+    },
+    "nof": {
+      "min": 0.0,
+      "max": 3397.0
+    },
+    "cida": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "coa": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "method_loc_max": {
+      "min": 0.0,
+      "max": 963.0
+    },
+    "method_loc_avg": {
+      "min": 0.0,
+      "max": 225.0
+    },
+    "method_param_max": {
+      "min": 0.0,
+      "max": 22.0
+    },
+    "foreign_method_calls": {
+      "min": 0.0,
+      "max": 585.0
+    },
+    "foreign_field_accesses": {
+      "min": 0.0,
+      "max": 366.0
+    },
+    "local_field_accesses": {
+      "min": 0.0,
+      "max": 20996.0
+    },
+    "accessed_foreign_class_count": {
+      "min": 0.0,
+      "max": 56.0
+    },
+    "envy_method_ratio": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "code_churn": {
+      "min": 0.0,
+      "max": 373669.0
+    },
+    "volatility": {
+      "min": 0.0,
+      "max": 7.168306572613257
+    },
+    "bug_fix_ratio": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "author_count": {
+      "min": 0.0,
+      "max": 89.0
+    },
+    "jdeodorant_signal": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "iplasma_signal": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "designite_signal": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "jspirit_signal": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "hotspot_proxy": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "evolution_intensity": {
+      "min": 0.0,
+      "max": 1.0
+    }
+  }
+}

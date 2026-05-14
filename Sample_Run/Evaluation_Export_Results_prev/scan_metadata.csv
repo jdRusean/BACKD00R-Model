@@ -1,0 +1,2 @@
+session_id,scan_id,scan_type,timestamp,duration_ms,total_classes,total_candidates,wmca_formula_version,dcas_version,feature_schema_version,model_artifact_version
+f3eaddd2-cec6-4781-baff-876af5c37972,19e27808a07,FULL_PROJECT,2026-05-15T01:19:56.476Z,565,6,4,BACKD00R-WMCA-v2,DCAS-v1.1,FV-v1.1,BACKD00R-MoE-v1.0

@@ -1,0 +1,2 @@
+session_id,scan_id,model_artifact_version,feature_bounds_version,total_classes_in_project,total_candidates,inference_success_count,inference_missing_count,inference_success_rate,wmca_score_min,wmca_score_max,wmca_score_mean,confidence_min,confidence_max,confidence_mean,god_class_count,feature_envy_count,long_method_count
+f209e21b-1af8-4693-8ba9-4aed76701d86,19e278f69a9,BACKD00R-MoE-v1.0,FNB-v1.0,6,4,0,4,0.0000,0.1036,0.1908,0.1308,0.0000,0.0000,0.0000,0,0,0

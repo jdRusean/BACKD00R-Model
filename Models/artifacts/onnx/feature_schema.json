@@ -1,0 +1,39 @@
+{
+  "version": "backd00r-29-v2",
+  "input_name": "float_input",
+  "input_shape": [
+    1,
+    29
+  ],
+  "features": [
+    "wmc",
+    "cbo",
+    "lcom",
+    "rfc",
+    "dit",
+    "loc",
+    "cc_max",
+    "nom",
+    "nof",
+    "cida",
+    "coa",
+    "method_loc_max",
+    "method_loc_avg",
+    "method_param_max",
+    "foreign_method_calls",
+    "foreign_field_accesses",
+    "local_field_accesses",
+    "accessed_foreign_class_count",
+    "envy_method_ratio",
+    "jdeodorant_signal",
+    "iplasma_signal",
+    "designite_signal",
+    "jspirit_signal",
+    "code_churn",
+    "volatility",
+    "bug_fix_ratio",
+    "author_count",
+    "hotspot_proxy",
+    "evolution_intensity"
+  ]
+}

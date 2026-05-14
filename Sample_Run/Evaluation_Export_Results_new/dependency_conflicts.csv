@@ -1,0 +1,1 @@
+session_id,scan_id,ordering_type,candidate_id,depends_on_candidate_id,candidate_order,dependency_order,conflict_type

@@ -1,0 +1,18 @@
+{
+  "session_id": "f209e21b-1af8-4693-8ba9-4aed76701d86",
+  "project_name": "Sample_Run",
+  "project_hash": "4a87c09aa5cfc4de44413e5114a4ef4b",
+  "plugin_version": "BACKD00R-2.0",
+  "wmca_formula_version": "BACKD00R-WMCA-v2",
+  "dcas_version": "DCAS-v1.1",
+  "started_at": "2026-05-15T01:36:10.667Z",
+  "ended_at": "2026-05-15T01:36:11.223Z",
+  "anonymized": true,
+  "feature_schema_version": "FV-v1.1",
+  "model_artifact_version": "BACKD00R-MoE-v1.0",
+  "feature_bounds_version": "FNB-v1.0",
+  "total_events": 16,
+  "model_prediction_rows": 4,
+  "wmca_ranking_rows": 4,
+  "dcas_sequence_rows": 4
+}

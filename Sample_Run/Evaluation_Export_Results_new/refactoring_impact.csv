@@ -1,0 +1,1 @@
+session_id,candidate_id,smell_type,refactoring_type,change_source,before_snapshot_id,after_snapshot_id,wmc_delta,cbo_delta,lcom_delta,rfc_delta,loc_delta,cc_max_delta,nom_delta,nof_delta,cida_delta,coa_delta,virtual_improvement_prediction,actual_improvement_score,prediction_error

@@ -1,0 +1,17 @@
+{
+  "supported_labels": [
+    "GOD_CLASS",
+    "FEATURE_ENVY",
+    "LONG_METHOD"
+  ],
+  "output_name": "backd00r_probabilities_ordered",
+  "output_shape": [
+    1,
+    3
+  ],
+  "output_order": [
+    "GOD_CLASS",
+    "FEATURE_ENVY",
+    "LONG_METHOD"
+  ]
+}

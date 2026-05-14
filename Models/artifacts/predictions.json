@@ -1,0 +1,34 @@
+[
+  {
+    "predictions": {
+      "GOD_CLASS": 0.31585169772885163,
+      "FEATURE_ENVY": 0.1511176156944909,
+      "LONG_METHOD": 0.5330306865766575
+    },
+    "confidence_score": 0.5330306865766575,
+    "confidence_margin": 0.2171789888478059,
+    "dominant_smell": "LONG_METHOD",
+    "gate_weights": {
+      "GodClassExpert": 0.20016555437421438,
+      "FeatureEnvyExpert": 0.2577933727751794,
+      "LongMethodExpert": 0.5420410728506062
+    },
+    "expert_distributions": {
+      "GodClassExpert": {
+        "GOD_CLASS": 0.3291231742368174,
+        "FEATURE_ENVY": 0.1761994702310428,
+        "LONG_METHOD": 0.4946773555321398
+      },
+      "FeatureEnvyExpert": {
+        "GOD_CLASS": 0.27802956802615897,
+        "FEATURE_ENVY": 0.13098920018139276,
+        "LONG_METHOD": 0.5909812317924482
+      },
+      "LongMethodExpert": {
+        "GOD_CLASS": 0.3289389014193572,
+        "FEATURE_ENVY": 0.15142838329889693,
+        "LONG_METHOD": 0.5196327152817458
+      }
+    }
+  }
+]

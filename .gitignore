@@ -1,0 +1,10 @@
+﻿SYSTEM/
+.pytest_cache/
+Models/artifacts/repo_cache/
+
+SYSTEM/
+.pytest_cache/
+Models/artifacts/repo_cache/
+Models/.pytest_tmp/
+**/__pycache__/
+*.pyc

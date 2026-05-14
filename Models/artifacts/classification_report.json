@@ -1,0 +1,33 @@
+{
+  "GOD_CLASS": {
+    "precision": 0.8,
+    "recall": 0.42105263157894735,
+    "f1-score": 0.5517241379310345,
+    "support": 19.0
+  },
+  "FEATURE_ENVY": {
+    "precision": 0.2,
+    "recall": 0.3333333333333333,
+    "f1-score": 0.25,
+    "support": 6.0
+  },
+  "LONG_METHOD": {
+    "precision": 0.23076923076923078,
+    "recall": 0.375,
+    "f1-score": 0.2857142857142857,
+    "support": 8.0
+  },
+  "accuracy": 0.3939393939393939,
+  "macro avg": {
+    "precision": 0.4102564102564103,
+    "recall": 0.37646198830409355,
+    "f1-score": 0.3624794745484401,
+    "support": 33.0
+  },
+  "weighted avg": {
+    "precision": 0.552913752913753,
+    "recall": 0.3939393939393939,
+    "f1-score": 0.43237796686072544,
+    "support": 33.0
+  }
+}

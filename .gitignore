@@ -8,3 +8,4 @@ Models/artifacts/repo_cache/
 Models/.pytest_tmp/
 **/__pycache__/
 *.pyc
+Models/artifacts/repo_cache/
